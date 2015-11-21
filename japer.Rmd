@@ -1,7 +1,7 @@
 ---
-title: "japr: Extract links from webpages"
+title: "japer: Extract URLs from HTML"
 author: "Johannes Johow"
-date: "Version 0.31 (2015-11-12)"
+date: "Version 0.10 (2015-11-21)"
 output: html_document
 runtime: shiny
 ---
@@ -17,16 +17,12 @@ shinyUI(fluidPage(
   titlePanel(""),
   sidebarLayout(
     sidebarPanel(
-      inputPanel(h2("Settings"), 
-                 textInput( "myURL", "Enter URL", value = "http://joh.one"),
-                 textInput( "myFile", "Local File", value = "/home/johow/Dropbox/webjayOutput/index.html"),
-                 selectInput("webAccess", "Internet connection?", c(TRUE, FALSE),
-selected=FALSE, multiple=FALSE))
+      inputPanel(textInput( "myURL", "Enter URL", value = "http://joh.one"))
     ),
-    mainPanel(h2("URL"), verbatimTextOutput("myURL"), 
-      h2("html"), verbatimTextOutput("outText")
+    mainPanel(h2("Your URL:"), verbatimTextOutput("myURL"), 
+      h2("HTML:"), verbatimTextOutput("outText")
        , 
-       h2("Extracted links below"), 
+       h2("URLs:"), 
        htmlOutput("outLinks"))
 ))),server = function(input, output, session){
   
@@ -36,9 +32,7 @@ ahref <- function(x){
 }
 
  getLinks <-  function(input){
-tmp1 <- ifelse(input$webAccess==TRUE, 
-                                    paste(readSite(input$myURL), collapse= " "), 
-                                    paste(readLines(input$myFile), collapse= " "))
+tmp1 <- paste(readSite(input$myURL), collapse= " ")
 tmp2 <- paste(loopMatch(tmp1), collapse= " ")
 
 tmp3 <- getLinks2(tmp2)
@@ -83,20 +77,9 @@ readSite <- function(myURL="http://joh.one"){
   return(outlines)
 }
 output$myURL <- renderText(input$myURL)
-output$outText <- renderText({ifelse(nchar(
-  ifelse(input$webAccess==TRUE, 
-                                    paste(readSite(input$myURL), collapse= " "), 
-                                    paste(readLines(input$myFile), collapse= " ")))>140,
- paste0(substr(
-  ifelse(input$webAccess==TRUE, 
-                                    paste(readSite(input$myURL), collapse= " "), 
-                                    paste(readLines(input$myFile), collapse= " ")), 1, 140), "...## output truncated (omitted ", c(nchar(
-  ifelse(input$webAccess==TRUE, 
-                                    paste(readSite(input$myURL), collapse= " "), 
-                                    paste(readLines(input$myFile), collapse= " ")))-140), " characters)"),
-  ifelse(input$webAccess==TRUE, 
-                                    paste(readSite(input$myURL), collapse= " "), 
-                                    paste(readLines(input$myFile), collapse= " ")))})
+output$outText <- renderText({ifelse(nchar(paste(readSite(input$myURL), collapse= " "))>140,
+ paste0(substr(paste(readSite(input$myURL), collapse= " "), 1, 140), "...## output truncated (omitted ", c(nchar(paste(readSite(input$myURL), collapse= " "))-140), " characters)"),
+ paste(readSite(input$myURL), collapse= " "))})
   
 
 output$outLinks <- renderText({getLinks(input)})

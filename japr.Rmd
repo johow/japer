@@ -1,0 +1,113 @@
+---
+title: "japr: Extract links from webpages"
+author: "Johannes Johow"
+date: "Version 0.31 (2015-11-12)"
+output: html_document
+runtime: shiny
+---
+
+
+
+```{r, echo=FALSE}
+
+ 
+
+shinyApp(
+shinyUI(fluidPage(
+  titlePanel(""),
+  sidebarLayout(
+    sidebarPanel(
+      inputPanel(h2("Settings"), 
+                 textInput( "myURL", "Enter URL", value = "http://joh.one"),
+                 textInput( "myFile", "Local File", value = "/home/johow/Dropbox/webjayOutput/index.html"),
+                 selectInput("webAccess", "Internet connection?", c(TRUE, FALSE),
+selected=FALSE, multiple=FALSE))
+    ),
+    mainPanel(h2("URL"), verbatimTextOutput("myURL"), 
+      h2("html"), verbatimTextOutput("outText")
+       , 
+       h2("Extracted links below"), 
+       htmlOutput("outLinks"))
+))),server = function(input, output, session){
+  
+  
+ahref <- function(x){
+  return(mapply("paste0", rep("<a href=\"", length(x)), x, rep("\">", length(x)), x, rep("</a><br/>", length(x))))
+}
+
+ getLinks <-  function(input){
+tmp1 <- ifelse(input$webAccess==TRUE, 
+                                    paste(readSite(input$myURL), collapse= " "), 
+                                    paste(readLines(input$myFile), collapse= " "))
+tmp2 <- paste(loopMatch(tmp1), collapse= " ")
+
+tmp3 <- getLinks2(tmp2)
+
+return(paste("\n", ahref(tmp3), collapse= " "))
+}
+  
+  
+  loopMatch <- function(x, pattern="http"){
+  outLinks <- ""
+  for (i in  c(getWords(x))){
+    if(grepl(pattern, paste(i))){
+      outLinks <- paste(outLinks, i)
+    }
+  }
+  return(getWords(outLinks)[-1])
+}
+  
+
+  
+getLinks2 <- function(x, linkPattern = "http"){
+  tmp <- unlist(lapply(strsplit(
+    gsub("'>", "\">", 
+         paste0(linkPattern, 
+                unlist(lapply(strsplit(loopMatch(paste(x, collapse= " ")),
+                                       split = paste(linkPattern)), "[[", 2)))), split = "\">"), "[[", 1))
+  return(unique(paste(ifelse(mapply("substr", tmp, nchar(tmp), nchar(tmp)) %in% c("'", "\""), 
+                             mapply("substr", tmp,1, (nchar(tmp)-1)), tmp))))
+}
+
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+
+getWords <- function(x){
+  return(unlist(lapply(strsplit(paste(unlist(x), collapse=" "), " "), trim)))
+}
+
+
+readSite <- function(myURL="http://joh.one"){
+  if (RCurl::url.exists(myURL)){
+    outlines <-  paste(unlist(readLines(myURL, warn="F")), collapse=" ")
+  } else {outlines <- paste("A message from japer:", myURL, "did not exist on", Sys.time())}
+  return(outlines)
+}
+output$myURL <- renderText(input$myURL)
+output$outText <- renderText({ifelse(nchar(
+  ifelse(input$webAccess==TRUE, 
+                                    paste(readSite(input$myURL), collapse= " "), 
+                                    paste(readLines(input$myFile), collapse= " ")))>140,
+ paste0(substr(
+  ifelse(input$webAccess==TRUE, 
+                                    paste(readSite(input$myURL), collapse= " "), 
+                                    paste(readLines(input$myFile), collapse= " ")), 1, 140), "...## output truncated (omitted ", c(nchar(
+  ifelse(input$webAccess==TRUE, 
+                                    paste(readSite(input$myURL), collapse= " "), 
+                                    paste(readLines(input$myFile), collapse= " ")))-140), " characters)"),
+  ifelse(input$webAccess==TRUE, 
+                                    paste(readSite(input$myURL), collapse= " "), 
+                                    paste(readLines(input$myFile), collapse= " ")))})
+  
+
+output$outLinks <- renderText({getLinks(input)})
+}, onStart = function(){if (!"tldextract" %in% rownames(installed.packages())){
+ devtools::install_github("jayjacobs/tldextract")}
+  }
+,
+options=list(
+    width="100%", height=1000
+  )
+)
+
+```
+
